@@ -1,0 +1,15 @@
+#pragma once
+
+#include "./command/cd_command.h"
+#include "./command/close_command.h"
+#include "./command/create_command.h"
+#include "./command/delete_command.h"
+#include "./command/exit_command.h"
+#include "./command/ls_command.h"
+#include "./command/mkdir_command.h"
+#include "./command/new_command.h"
+#include "./command/open_command.h"
+#include "./command/read_command.h"
+#include "./command/rmdir_command.h"
+#include "./command/sfs_command.h"
+#include "./command/write_command.h"
