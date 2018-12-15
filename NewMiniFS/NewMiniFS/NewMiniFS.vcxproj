@@ -129,6 +129,7 @@
     <ClCompile Include="src\command\rmdir_command.cpp" />
     <ClCompile Include="src\command\sfs_command.cpp" />
     <ClCompile Include="src\command\write_command.cpp" />
+    <ClCompile Include="src\io\nmfs_console.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\command.h" />
@@ -146,6 +147,7 @@
     <ClInclude Include="include\command\rmdir_command.h" />
     <ClInclude Include="include\command\sfs_command.h" />
     <ClInclude Include="include\command\write_command.h" />
+    <ClInclude Include="include\io\nmfs_console.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

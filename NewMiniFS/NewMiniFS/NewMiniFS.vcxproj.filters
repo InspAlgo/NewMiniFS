@@ -57,6 +57,9 @@
     <ClCompile Include="src\command\delete_command.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\io\nmfs_console.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\commands.h">
@@ -102,6 +105,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="include\command.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\io\nmfs_console.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
