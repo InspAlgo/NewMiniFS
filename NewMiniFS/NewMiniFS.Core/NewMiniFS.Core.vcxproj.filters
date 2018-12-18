@@ -18,9 +18,27 @@
     <ClCompile Include="src\nmfs_space.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\exceptions\error_exception.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\exceptions\nmfs_exception.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\exceptions\warning_exception.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\nmfs_space.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\exceptions\error_exception.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\exceptions\nmfs_exception.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\exceptions\warning_exception.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

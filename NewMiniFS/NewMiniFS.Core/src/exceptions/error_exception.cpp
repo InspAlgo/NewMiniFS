@@ -1,0 +1,1 @@
+#include "../../include/exceptions/error_exception.h"

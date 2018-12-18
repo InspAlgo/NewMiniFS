@@ -115,9 +115,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\exceptions\error_exception.cpp" />
+    <ClCompile Include="src\exceptions\nmfs_exception.cpp" />
+    <ClCompile Include="src\exceptions\warning_exception.cpp" />
     <ClCompile Include="src\nmfs_space.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\exceptions\error_exception.h" />
+    <ClInclude Include="include\exceptions\nmfs_exception.h" />
+    <ClInclude Include="include\exceptions\warning_exception.h" />
     <ClInclude Include="include\nmfs_space.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
