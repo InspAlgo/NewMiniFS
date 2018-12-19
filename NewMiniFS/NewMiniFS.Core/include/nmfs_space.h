@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <queue>
 #include <list>
 
 struct Header  // 空间头  24B
@@ -35,16 +36,16 @@ public:
     static void System(const std::string &space_name);  // 打开一个简单文件系统
     static void Exit();  // 退出打开的简单文件系统
 
-    void ChangeDirectory();  // 更改当前目录
+    void ChangeDirectory(std::queue<std::string> &cd_path);  // 更改当前目录
     void Close();  // 关闭文件
-    void Create();  // 创建文件
-    void Delete();  // 删除文件
+    void Create(const std::string &file_name, const std::string &file_type);  // 创建文件
+    void Delete(const std::string &del_file_name);  // 删除文件
     void List(std::list<CurFloder> &tree, const bool &is_root);  // 显示目录
-    void MakeDirectory();  // 创建子目录
-    void Open();  // 打开文件
-    void Read();  // 关闭文件
+    void MakeDirectory(const std::string &dir_name);  // 创建子目录
+    void Open(const std::string &file_name, const std::string &file_type);  // 打开文件
+    void Read(unsigned char *output);  // 关闭文件
     void RemoveDirectory();  // 删除文件夹
-    void Write();  // 写文件
+    void Write(const unsigned char *input, const unsigned __int32 size);  // 写文件
 
 private:
     NMFSSpace();
@@ -60,12 +61,15 @@ private:
     void DeleteFile(const unsigned __int16 &index) noexcept;  // 删除文件或文件夹的数据块，以及修改 FAT1、FAT2 表
     void DelDirectory(File &extra_floder);  // 删除子目录
     void CreateList(std::list<CurFloder> &tree, unsigned __int16 depth, const File &extra_floder);
+    unsigned __int16 WriteFile(const unsigned char *input, const unsigned __int32 size);
 
     std::string _space_name;
     Header _header;
     unsigned char **_space_block;  // 512 个块，每个块 1KB
     File *_cur_floder;  // 当前文件夹
     File *_cur_file;  // 当前文件
+    unsigned __int16 _cur_file_block_index;  // 记录当前文件的文件夹块索引
+    unsigned __int8 _cur_file_offset;  // 记录当前文件的文件夹块内的偏移量
 
     std::list<CurFloder>*_path;  // 当前路径序列，包含根目录
 
