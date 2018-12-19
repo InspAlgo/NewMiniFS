@@ -5,6 +5,5 @@
 class NMFSWarningException :public NMFSException
 {
 public:
-    NMFSWarningException();
     NMFSWarningException(const std::string &message);
 };

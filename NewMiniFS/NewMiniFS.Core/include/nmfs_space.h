@@ -51,13 +51,13 @@ private:
     NMFSSpace(const std::string &space_name);
 
     void HeaderToBlock();  // 将文件头、FAT 表等一些基本信息写回内存空间块中
-    void FileToBlock(const File *file, const unsigned __int16 &block_index, const unsigned __int8 &offset);  // 将文件类型块写到内存空间块中
-    void BlockToFile(File *file, const unsigned __int16 &block_index, const unsigned __int8 &offset);  // 将内存空间块写到文件类型块中
-    unsigned __int16 GetFreeBlock() const;  // 从 FAT1 表中查到还有那个块是空闲的，返回块的位置 返回0xffff表示没有空闲块
-    void OffFreeBlock(const unsigned __int16 &block_index);  // 块被占用
-    void GetFreeFile(unsigned __int16 &block_index, unsigned __int8 &offset);  // 从文件夹块中得到一个空闲位
-    void InitFloderBlock(const unsigned __int16 &block_index);  // 初始化新的文件夹块，主要是给空间中空闲位标记的 last_index 标记 0xffff
-    void DeleteFile(const unsigned __int16 &index);  // 删除文件或文件夹的数据块，以及修改 FAT1、FAT2 表
+    void FileToBlock(const File *file, const unsigned __int16 &block_index, const unsigned __int8 &offset) noexcept;  // 将文件类型块写到内存空间块中
+    void BlockToFile(File *file, const unsigned __int16 &block_index, const unsigned __int8 &offset) noexcept;  // 将内存空间块写到文件类型块中
+    unsigned __int16 GetFreeBlock() const noexcept;  // 从 FAT1 表中查到还有那个块是空闲的，返回块的位置 返回0xffff表示没有空闲块
+    void OffFreeBlock(const unsigned __int16 &block_index) noexcept;  // 块被占用
+    void GetFreeFile(unsigned __int16 &block_index, unsigned __int8 &offset) noexcept;  // 从文件夹块中得到一个空闲位
+    void InitFloderBlock(const unsigned __int16 &block_index) noexcept;  // 初始化新的文件夹块，主要是给空间中空闲位标记的 last_index 标记 0xffff
+    void DeleteFile(const unsigned __int16 &index) noexcept;  // 删除文件或文件夹的数据块，以及修改 FAT1、FAT2 表
     void DelDirectory(File &extra_floder);  // 删除子目录
     void CreateList(std::list<CurFloder> &tree, unsigned __int16 depth, const File &extra_floder);
 
