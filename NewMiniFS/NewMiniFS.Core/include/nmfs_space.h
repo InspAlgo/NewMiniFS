@@ -28,6 +28,13 @@ struct CurFloder
     unsigned __int16 index;
 };
 
+struct TreeNode
+{
+    unsigned char name[8];
+    unsigned char type[4];
+    unsigned __int16 index;
+};
+
 class NMFSSpace
 {
 public:
@@ -39,12 +46,12 @@ public:
     void ChangeDirectory(std::queue<std::string> &cd_path);  // 更改当前目录
     void Close();  // 关闭文件
     void Create(const std::string &file_name, const std::string &file_type);  // 创建文件
-    void Delete(const std::string &del_file_name);  // 删除文件
-    void List(std::list<CurFloder> &tree, const bool &is_root);  // 显示目录
+    void Delete(const std::string &del_file_name, const std::string &del_file_type);  // 删除文件
+    void List(std::list<TreeNode> &tree, const bool &is_root);  // 显示目录
     void MakeDirectory(const std::string &dir_name);  // 创建子目录
     void Open(const std::string &file_name, const std::string &file_type);  // 打开文件
     void Read(unsigned char *output);  // 关闭文件
-    void RemoveDirectory();  // 删除文件夹
+    void RemoveDirectory(const std::string &del_floder_name);  // 删除文件夹
     void Write(const unsigned char *input, const unsigned __int32 size);  // 写文件
 
 private:
@@ -60,7 +67,7 @@ private:
     void InitFloderBlock(const unsigned __int16 &block_index) noexcept;  // 初始化新的文件夹块，主要是给空间中空闲位标记的 last_index 标记 0xffff
     void DeleteFile(const unsigned __int16 &index) noexcept;  // 删除文件或文件夹的数据块，以及修改 FAT1、FAT2 表
     void DelDirectory(File &extra_floder);  // 删除子目录
-    void CreateList(std::list<CurFloder> &tree, unsigned __int16 depth, const File &extra_floder);
+    void CreateList(std::list<TreeNode> &tree, unsigned __int16 depth, const File &extra_floder);
     unsigned __int16 WriteFile(const unsigned char *input, const unsigned __int32 size);
 
     std::string _space_name;

@@ -1,6 +1,22 @@
 # NewMiniFS
 NewMiniFS/.vs/*
+NewMiniFS/TestResults/*
 
+NewMiniFS/x64/*
+NewMiniFS/Debug/*
+NewMiniFS/Release/*
+
+NewMiniFS/NewMiniFS/x64/*
+NewMiniFS/NewMiniFS/Debug/*
+NewMiniFS/NewMiniFS/Release/*
+
+NewMiniFS/NewMiniFS.Core/x64/*
+NewMiniFS/NewMiniFS.Core/Debug/*
+NewMiniFS/NewMiniFS.Core/Release/*
+
+NewMiniFS/NewMiniFSUnitTests/x64/*
+NewMiniFS/NewMiniFSUnitTests/Debug/*
+NewMiniFS/NewMiniFSUnitTests/Release/*
 
 # Prerequisites
 *.d

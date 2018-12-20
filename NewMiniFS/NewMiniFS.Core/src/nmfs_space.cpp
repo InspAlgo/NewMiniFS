@@ -3,6 +3,8 @@
 #include "../include/exceptions/warning_exception.h"
 #include "../include/exceptions/error_exception.h"
 
+#pragma warning(disable:4996)
+
 NMFSSpace* volatile NMFSSpace::_global_space_pointer = nullptr;
 
 void  NMFSSpace::NewNMFSSpace(const std::string &space_name)
@@ -18,7 +20,6 @@ void  NMFSSpace::NewNMFSSpace(const std::string &space_name)
         fclose(space_file);
         throw NMFSWarningException("当前有同名文件！");
     }
-    fclose(space_file);
 
     /* 在当前位置创建一个空间文件，以后续写回磁盘 */
     space_file = fopen((char*)space_name.data(), "wb+");
@@ -31,7 +32,7 @@ void  NMFSSpace::NewNMFSSpace(const std::string &space_name)
     _global_space_pointer->_space_name = space_name;
 }
 
-NMFSSpace*  NMFSSpace::GetActiveNMFSSpace()
+NMFSSpace* NMFSSpace::GetActiveNMFSSpace()
 {
     if (_global_space_pointer == nullptr)
         throw NMFSWarningException("当前并未打开一个简单文件系统！");
@@ -122,7 +123,8 @@ NMFSSpace::NMFSSpace(const std::string &space_name)
     /* 将磁盘中的数据写到内存中 */
     FILE *space_file = fopen((char*)space_name.data(), "rb+");
     _fseeki64(space_file, 0LL, SEEK_SET);
-    fread(&_space_block, sizeof(_space_block), 1, space_file);
+    for (int i = 0; i < 512; i++)
+        fread(_space_block[i], 1024, 1, space_file);
     fclose(space_file);
 
     for (int i = 0; i < 64; i++)
@@ -153,13 +155,10 @@ void NMFSSpace::System(const std::string &space_name)
     space_file = fopen((char*)space_name.data(), "rb+");
 
     if (space_file == nullptr)
-    {
-        fclose(space_file);
         throw NMFSWarningException("当前目录下无此文件！");
-    }
 
     _fseeki64(space_file, 0LL, SEEK_SET);
-    fread(&magic_num, sizeof(magic_num), 1, space_file);
+    fread(&magic_num, 4, 1, space_file);
     fclose(space_file);
 
     if (magic_num[0] != 'N' || magic_num[1] != 'M' 
@@ -182,7 +181,8 @@ void NMFSSpace::Exit()
     /* 将内存空间的数据写回磁盘 */
     FILE *space_file = fopen((char*)_global_space_pointer->_space_name.data(), "rb+");
     _fseeki64(space_file, 0LL, SEEK_SET);
-    fwrite(&_global_space_pointer->_space_block, sizeof(_global_space_pointer->_space_block), 1, space_file);
+    for (int i = 0; i < 512; i++)
+        fwrite(_global_space_pointer->_space_block[i], 1024, 1, space_file);
     fclose(space_file);
 
     /* 删除单例 */
@@ -755,14 +755,19 @@ void NMFSSpace::Create(const std::string &file_name, const std::string &file_typ
     }
 }
 
-void NMFSSpace::Delete(const std::string &del_file_name)
+void NMFSSpace::Delete(const std::string &del_file_name, const std::string &del_file_type)
 {
     if (del_file_name.length() > 8)
         throw NMFSWarningException("文件名称不合法！");
+    if (del_file_type.length() > 4)
+        throw NMFSWarningException("文件类型不合法！");
 
     char name_c[8] = { '\0' };
     for (int i = 0; i < del_file_name.length(); i++)
         name_c[i] = del_file_name[i];
+    char type_c[4] = { '\0' };
+    for (int i = 0; i < 4; i++)
+        type_c[i] = del_file_type[i];
 
     // 判断当前文件夹下是否有此文件
     // 先遍历本块
@@ -784,6 +789,10 @@ void NMFSSpace::Delete(const std::string &del_file_name)
 
         if (file_temp.last_index == 0xfffff || (file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
             && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf))
+            continue;
+
+        if (type_c[0] != file_temp.type[0] || type_c[1] != file_temp.type[1] ||
+            type_c[2] != file_temp.type[2] || type_c[3] != file_temp.type[3])
             continue;
 
         bool flag_name = true;
@@ -836,6 +845,10 @@ void NMFSSpace::Delete(const std::string &del_file_name)
                     && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf))
                     continue;
 
+                if (type_c[0] != file_temp.type[0] || type_c[1] != file_temp.type[1] ||
+                    type_c[2] != file_temp.type[2] || type_c[3] != file_temp.type[3])
+                    continue;
+
                 bool flag_name = true;
 
                 for (int i = 0; i < 8; i++)
@@ -867,7 +880,7 @@ void NMFSSpace::Delete(const std::string &del_file_name)
         throw NMFSWarningException("不存在此文件！");
 }
 
-void NMFSSpace::List(std::list<CurFloder> &tree, const bool &is_root)
+void NMFSSpace::List(std::list<TreeNode> &tree, const bool &is_root)
 {
     tree.clear();
     File extra_floder;
@@ -880,11 +893,13 @@ void NMFSSpace::List(std::list<CurFloder> &tree, const bool &is_root)
     this->CreateList(tree, static_cast<unsigned __int16>(0), extra_floder);
 }
 
-void NMFSSpace::CreateList(std::list<CurFloder> &tree, unsigned __int16 depth, const File &extra_floder)
+void NMFSSpace::CreateList(std::list<TreeNode> &tree, unsigned __int16 depth, const File &extra_floder)
 {
     // 这里使用了 CurFloder 结构体，其中 index 记录深度信息，name 记录名称
 
-    CurFloder cur_floder_temp;
+    TreeNode cur_floder_temp;
+    for (int i = 0; i < 4; i++)
+        cur_floder_temp.type[i] = 0xff;
     memcpy(cur_floder_temp.name, extra_floder.name, 8);
     cur_floder_temp.index = depth;
     tree.push_back(cur_floder_temp);
@@ -921,6 +936,8 @@ void NMFSSpace::CreateList(std::list<CurFloder> &tree, unsigned __int16 depth, c
         }
         else
         {
+            for (int i = 0; i < 4; i++)
+                cur_floder_temp.type[i] = file_temp.type[i];
             memcpy(cur_floder_temp.name, file_temp.name, 8);
             tree.push_back(cur_floder_temp);
         }
@@ -957,6 +974,8 @@ void NMFSSpace::CreateList(std::list<CurFloder> &tree, unsigned __int16 depth, c
                 }
                 else
                 {
+                    for (int i = 0; i < 4; i++)
+                        cur_floder_temp.type[i] = file_temp.type[i];
                     memcpy(cur_floder_temp.name, file_temp.name, 8);
                     tree.push_back(cur_floder_temp);
                 }
@@ -1160,6 +1179,10 @@ void NMFSSpace::Open(const std::string &file_name, const std::string &file_type)
             && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf))
             continue;
 
+        if (type_c[0] != file_temp.type[0] || type_c[1] != file_temp.type[1] ||
+            type_c[2] != file_temp.type[2] || type_c[3] != file_temp.type[3])
+            continue;
+
         bool flag_name = true;
 
         for (int i = 0; i < 8; i++)
@@ -1205,6 +1228,10 @@ void NMFSSpace::Open(const std::string &file_name, const std::string &file_type)
 
                 if (file_temp.last_index == 0xfffff || (file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
                     && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf))
+                    continue;
+
+                if (type_c[0] != file_temp.type[0] || type_c[1] != file_temp.type[1] ||
+                    type_c[2] != file_temp.type[2] || type_c[3] != file_temp.type[3])
                     continue;
 
                 bool flag_name = true;
@@ -1267,11 +1294,8 @@ void NMFSSpace::Read(unsigned char *output)
     }
 }
 
-void NMFSSpace::RemoveDirectory()
+void NMFSSpace::RemoveDirectory(const std::string &del_floder_name)
 {
-    // 被删除的文件名称
-    std::string del_floder_name;
-
     if (del_floder_name.length() > 8)
         throw NMFSWarningException("文件夹名称不合法！");
 

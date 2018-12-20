@@ -1,11 +1,11 @@
-#include "../../include/command/mkdir_command.h"
+#include "../../include/command/rmdir_command.h"
 
-MkdirCommand::MkdirCommand()
+RmdirCommand::RmdirCommand()
 {
 
 }
 
-bool MkdirCommand::Accept(const std::string &string) const
+bool RmdirCommand::Accept(const std::string &string) const
 {
     if (string == "rmdir")
         return true;
@@ -13,12 +13,12 @@ bool MkdirCommand::Accept(const std::string &string) const
         return false;
 }
 
-void MkdirCommand::Action(const std::vector<std::string> &argv) const
+void RmdirCommand::Action(const std::vector<std::string> &argv) const
 {
 
 }
 
-void MkdirCommand::Help() const
+void RmdirCommand::Help() const
 {
 
 }
