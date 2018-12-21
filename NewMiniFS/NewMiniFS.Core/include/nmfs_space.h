@@ -26,6 +26,8 @@ struct CurFloder
 {
     unsigned char name[8];
     unsigned __int16 index;
+    unsigned __int16 last_index;
+    unsigned __int8 last_offset;
 };
 
 struct TreeNode
@@ -67,6 +69,7 @@ private:
     void InitFloderBlock(const unsigned __int16 &block_index) noexcept;  // 初始化新的文件夹块，主要是给空间中空闲位标记的 last_index 标记 0xffff
     void DeleteFile(const unsigned __int16 &index) noexcept;  // 删除文件或文件夹的数据块，以及修改 FAT1、FAT2 表
     void DelDirectory(File &extra_floder);  // 删除子目录
+    void DeleteDirectory(const File &extra_floder);  // 注销信息
     void CreateList(std::list<TreeNode> &tree, unsigned __int16 depth, const File &extra_floder);
     unsigned __int16 WriteFile(const unsigned char *input, const unsigned __int32 size);
 
@@ -75,6 +78,8 @@ private:
     unsigned char **_space_block;  // 512 个块，每个块 1KB
     File *_cur_floder;  // 当前文件夹
     File *_cur_file;  // 当前文件
+    unsigned __int16 _cur_floder_block_index;
+    unsigned __int8 _cur_floder_offset;
     unsigned __int16 _cur_file_block_index;  // 记录当前文件的文件夹块索引
     unsigned __int8 _cur_file_offset;  // 记录当前文件的文件夹块内的偏移量
 

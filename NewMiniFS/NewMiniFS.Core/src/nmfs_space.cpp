@@ -97,6 +97,8 @@ NMFSSpace::NMFSSpace()
     CurFloder temp;
     memcpy(temp.name, _cur_floder->name, 8);
     temp.index = _cur_floder->cur_index;
+    temp.last_index = 0xffff;
+    temp.last_offset = 0xff;
     _path->push_back(temp);
 }
 
@@ -140,6 +142,8 @@ NMFSSpace::NMFSSpace(const std::string &space_name)
     CurFloder temp;
     memcpy(temp.name, _cur_floder->name, 8);
     temp.index = _cur_floder->cur_index;
+    temp.last_index = 0xffff;
+    temp.last_offset = 0xff;
     _path->push_back(temp);
 }
 
@@ -324,6 +328,7 @@ unsigned __int16 NMFSSpace::GetFreeBlock() const noexcept
         if (_header.FAT1[i / 8] & bit)  // _header.FAT1[i / 8] & bit <= _header.FAT1[i / 8] & bit  == bit
             continue;
 
+        _header.FAT1[i / 8] |= bit;
         _header.FAT2[i] = 0xffff;
         return static_cast<unsigned __int16>(i);
     }
@@ -345,22 +350,16 @@ void NMFSSpace::GetFreeFile(unsigned __int16 &block_index, unsigned __int8 &offs
 
     // 先遍历本块
     File file_temp;
-    bool flag_find = false;
     unsigned __int8 offset_p;
-    unsigned __int8 offset_end = static_cast<unsigned __int8>(1);
+    unsigned __int8 offset_end = static_cast<unsigned __int8>(41);
     unsigned __int16 index_temp = block_index;
-
-    if (cur_floder.file_size < static_cast<unsigned __int8>(42))
-        offset_end = static_cast<unsigned __int8>(cur_floder.file_size);
-    else
-        offset_end = static_cast<unsigned __int8>(41);
 
     for (offset_p = static_cast<unsigned __int8>(1);
         offset_p <= offset_end; offset_p++)
     {
         this->BlockToFile(&file_temp, index_temp, offset_p);
 
-        if (file_temp.last_index == 0xfffff)
+        if (file_temp.last_index == 0xffff)
         {
             block_index = index_temp;
             offset = offset_p;
@@ -371,25 +370,17 @@ void NMFSSpace::GetFreeFile(unsigned __int16 &block_index, unsigned __int8 &offs
     // 如果有拓展块，再遍历拓展块
     if (cur_floder.block_num > static_cast<unsigned __int16>(1))
     {
-        unsigned __int16 end = cur_floder.file_size;
-
         // 统计拓展块
-        while (!flag_find && _header.FAT2[index_temp] != 0xffff)
+        while ( _header.FAT2[index_temp] != 0xffff)
         {
             index_temp = _header.FAT2[index_temp];
-            end -= static_cast<unsigned __int16>(41);
-
-            if (end > static_cast<unsigned __int16>(41))
-                offset_end = static_cast<unsigned __int8>(41);
-            else
-                offset_end = static_cast<unsigned __int8>(end);
 
             for (offset_p = static_cast<unsigned __int8>(1);
                 offset_p <= offset_end; offset_p++)
             {
                 this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                if (file_temp.last_index == 0xfffff)
+                if (file_temp.last_index == 0xffff)
                 {
                     block_index = index_temp;
                     offset = offset_p;
@@ -409,13 +400,7 @@ void NMFSSpace::InitFloderBlock(const unsigned __int16 &block_index) noexcept
     for (unsigned __int16 offset_p = static_cast<unsigned __int16>(24); 
         offset_p < static_cast<unsigned __int16>(1024); offset_p++)
     {
-        _space_block[block_index][offset_p] = 0x00;
-        // 将 last_index 位置为 0xffff
-        if(offset_p / static_cast<unsigned __int16>(24) + static_cast<unsigned __int16>(10) == offset_p)
-        {
-            _space_block[block_index][offset_p - static_cast<unsigned __int16>(1)] = 0xff;
-            _space_block[block_index][offset_p - static_cast<unsigned __int16>(2)] = 0xff;
-        }
+        _space_block[block_index][offset_p] = 0xff;
     }
 }
 
@@ -427,7 +412,7 @@ void NMFSSpace::DeleteFile(const unsigned __int16 &index) noexcept
     while (index_temp != 0xffff)
     {
         for (int i = 0; i < 1024; i++)
-            _space_block[index_temp][i] = 0x0;
+            _space_block[index_temp][i] = 0xff;
 
         int ii = static_cast<int>(index_temp);
         unsigned char bit = static_cast<unsigned char>(1 << (ii % 8));
@@ -460,22 +445,17 @@ void NMFSSpace::ChangeDirectory(std::queue<std::string> &cd_path)
         // 向上一级文件夹转移
         else if (str_floder == "..")  
         {
-            unsigned __int16 to_index = _cur_floder->last_index;
-            this->BlockToFile(_cur_floder, to_index, static_cast<unsigned __int8>(0));
-
             if (path_copy.size() > 1)
+            {
                 path_copy.pop_back();
+
+                unsigned __int16 to_index = cur_floder.last_index;
+                this->BlockToFile(&cur_floder, to_index, static_cast<unsigned __int8>(0));
+            }
             else if (path_copy.size() == 1)  // 已经到达根目录，不能再向上一级文件夹转移
                 continue;
             else
                 throw NMFSWarningException("不存在此路径！");
-
-            // 要转移的位置进栈
-            CurFloder temp;
-            memcpy(temp.name, _cur_floder->name, 8);
-            temp.index = _cur_floder->cur_index;
-            path_copy.push_back(temp);
-
         }
         // 向下一级文件夹转移
         else  
@@ -495,20 +475,14 @@ void NMFSSpace::ChangeDirectory(std::queue<std::string> &cd_path)
             // 先遍历本块
             File file_temp;
             unsigned __int8 offset_p;
-            unsigned __int8 offset_end = static_cast<unsigned __int8>(1);
-
-            if (_cur_floder->file_size < static_cast<unsigned __int8>(42))
-                offset_end = static_cast<unsigned __int8>(cur_floder.file_size);
-            else
-                offset_end = static_cast<unsigned __int8>(41);
+            unsigned __int8 offset_end = static_cast<unsigned __int8>(41);
 
             for (offset_p = static_cast<unsigned __int8>(1);
                 offset_p <= offset_end; offset_p++)
             {
                 this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                if (file_temp.last_index == 0xfffff || file_temp.type[0] != 0xf || file_temp.type[1] != 0xf
-                    || file_temp.type[2] != 0xf || file_temp.type[3] != 0xf)
+                if (file_temp.last_index == 0xffff || file_temp.type[0] != 0xff || file_temp.type[1] != 0xff || file_temp.type[2] != 0xff || file_temp.type[3] != 0xff)
                     continue;
 
                 bool flag_name = true;
@@ -527,7 +501,11 @@ void NMFSSpace::ChangeDirectory(std::queue<std::string> &cd_path)
                     CurFloder temp;
                     memcpy(temp.name, file_temp.name, 8);
                     temp.index = file_temp.cur_index;
+                    temp.last_index = index_temp;
+                    temp.last_offset = offset_p;
                     path_copy.push_back(temp);
+
+                    this->BlockToFile(&cur_floder, temp.index, static_cast<unsigned __int8>(0));
 
                     flag_find = true;
                     break;
@@ -537,26 +515,17 @@ void NMFSSpace::ChangeDirectory(std::queue<std::string> &cd_path)
             // 如果有拓展块，再遍历拓展块
             if (!flag_find && cur_floder.block_num > static_cast<unsigned __int16>(1))
             {
-                unsigned __int16 end = cur_floder.file_size;
-
                 // 统计拓展块
                 while (!flag_find && _header.FAT2[index_temp] != 0xffff)
                 {
                     index_temp = _header.FAT2[index_temp];
-                    end -= static_cast<unsigned __int16>(41);
-
-                    if (end > static_cast<unsigned __int16>(41))
-                        offset_end = static_cast<unsigned __int8>(41);
-                    else
-                        offset_end = static_cast<unsigned __int8>(end);
 
                     for (offset_p = static_cast<unsigned __int8>(1);
                         offset_p <= offset_end; offset_p++)
                     {
                         this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                        if (file_temp.last_index == 0xfffff || file_temp.type[0] != 0xf || file_temp.type[1] != 0xf
-                            || file_temp.type[2] != 0xf || file_temp.type[3] != 0xf)
+                        if (file_temp.last_index == 0xffff || file_temp.type[0] != 0xff || file_temp.type[1] != 0xff || file_temp.type[2] != 0xff || file_temp.type[3] != 0xff)
                             continue;
 
                         bool flag_name = true;
@@ -575,7 +544,11 @@ void NMFSSpace::ChangeDirectory(std::queue<std::string> &cd_path)
                             CurFloder temp;
                             memcpy(temp.name, file_temp.name, 8);
                             temp.index = file_temp.cur_index;
+                            temp.last_index = index_temp;
+                            temp.last_offset = offset_p;
                             path_copy.push_back(temp);
+
+                            this->BlockToFile(&cur_floder, temp.index, static_cast<unsigned __int8>(0));
 
                             flag_find = true;
                             break;
@@ -595,6 +568,8 @@ void NMFSSpace::ChangeDirectory(std::queue<std::string> &cd_path)
         _path->push_back(temp);
     CurFloder back = _path->back();
     this->BlockToFile(_cur_floder, back.index, static_cast<unsigned __int8>(0));
+    _cur_floder_block_index = back.last_index;
+    _cur_floder_offset = back.last_offset;
 }
 
 void NMFSSpace::Close()
@@ -625,21 +600,16 @@ void NMFSSpace::Create(const std::string &file_name, const std::string &file_typ
     File file_temp;
     unsigned __int16 index_temp = _cur_floder->cur_index;
     unsigned __int8 offset_p;
-    unsigned __int8 offset_end = static_cast<unsigned __int8>(1);
+    unsigned __int8 offset_end = static_cast<unsigned __int8>(41);
     bool flag_find = false;
-
-    if (_cur_floder->file_size < static_cast<unsigned __int8>(42))
-        offset_end = static_cast<unsigned __int8>(_cur_floder->file_size);
-    else
-        offset_end = static_cast<unsigned __int8>(41);
 
     for (offset_p = static_cast<unsigned __int16>(1);
         offset_p <= offset_end; offset_p++)
     {
         this->BlockToFile(&file_temp, index_temp, offset_p);
 
-        if (file_temp.last_index == 0xfffff || (file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
-            && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf))
+        if (file_temp.last_index == 0xffff || (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
+            && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff))
             continue;
 
         bool flag_name = true;
@@ -663,26 +633,18 @@ void NMFSSpace::Create(const std::string &file_name, const std::string &file_typ
     // 如果有拓展块，再遍历拓展块
     if (!flag_find && _cur_floder->block_num > static_cast<unsigned __int16>(1))
     {
-        unsigned __int16 end = _cur_floder->file_size;
-
         // 统计拓展块
         while (!flag_find && _header.FAT2[index_temp] != 0xffff)
         {
             index_temp = _header.FAT2[index_temp];
-            end -= static_cast<unsigned __int16>(41);
-
-            if (end > static_cast<unsigned __int16>(41))
-                offset_end = static_cast<unsigned __int8>(41);
-            else
-                offset_end = static_cast<unsigned __int8>(end);
 
             for (offset_p = static_cast<unsigned __int8>(1);
                 offset_p <= offset_end; offset_p++)
             {
                 this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                if (file_temp.last_index == 0xfffff || (file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
-                    && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf))
+                if (file_temp.last_index == 0xffff || (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
+                    && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff))
                     continue;
 
                 bool flag_name = true;
@@ -718,7 +680,7 @@ void NMFSSpace::Create(const std::string &file_name, const std::string &file_typ
     memcpy(new_floder.type, type_c, 4);
 
     new_floder.file_size = static_cast<unsigned __int32>(0);
-    new_floder.block_num = static_cast<unsigned __int32>(1);
+    new_floder.block_num = static_cast<unsigned __int32>(0);
 
     // 更新当前的文件夹的记录信息，本级文件夹多了一个子文件
     _cur_floder->file_size++;
@@ -748,10 +710,15 @@ void NMFSSpace::Create(const std::string &file_name, const std::string &file_typ
 
         _cur_floder->block_num++;
 
+        index_temp = _cur_floder->cur_index;
+        this->FileToBlock(_cur_floder, index_temp, static_cast<unsigned __int8>(0));
+        this->InitFloderBlock(cur_index);
     }
     else  // 有空闲，直接写到空闲处
     {
         this->FileToBlock(&new_floder, cur_index, cur_offset);
+        index_temp = _cur_floder->cur_index;
+        this->FileToBlock(_cur_floder, index_temp, static_cast<unsigned __int8>(0));
     }
 }
 
@@ -774,21 +741,15 @@ void NMFSSpace::Delete(const std::string &del_file_name, const std::string &del_
     File file_temp;
     unsigned __int16 index_temp = _cur_floder->cur_index;
     unsigned __int8 offset_p;
-    unsigned __int8 offset_end = static_cast<unsigned __int8>(1);
-    bool flag_find = false;
+    unsigned __int8 offset_end = static_cast<unsigned __int8>(41);
 
-    if (_cur_floder->file_size < static_cast<unsigned __int8>(42))
-        offset_end = static_cast<unsigned __int8>(_cur_floder->file_size);
-    else
-        offset_end = static_cast<unsigned __int8>(41);
-
-    for (offset_p = static_cast<unsigned __int16>(1);
+    for (offset_p = static_cast<unsigned __int8>(1);
         offset_p <= offset_end; offset_p++)
     {
         this->BlockToFile(&file_temp, index_temp, offset_p);
 
-        if (file_temp.last_index == 0xfffff || (file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
-            && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf))
+        if (file_temp.last_index == 0xffff || (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
+            && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff))
             continue;
 
         if (type_c[0] != file_temp.type[0] || type_c[1] != file_temp.type[1] ||
@@ -810,39 +771,35 @@ void NMFSSpace::Delete(const std::string &del_file_name, const std::string &del_
         {
             this->DeleteFile(file_temp.cur_index);
 
+            unsigned __int16 last_index = file_temp.last_index;
             file_temp.last_index = 0xffff;
             file_temp.cur_index = 0xffff;
 
             this->FileToBlock(&file_temp, index_temp, offset_p);
 
-            flag_find = true;
-            break;
+            this->BlockToFile(&file_temp, last_index, static_cast<unsigned __int8>(0));
+            file_temp.file_size--;
+            this->FileToBlock(&file_temp, last_index, static_cast<unsigned __int8>(0));
+
+            return;
         }
     }
 
     // 如果有拓展块，再遍历拓展块
-    if (!flag_find && _cur_floder->block_num > static_cast<unsigned __int16>(1))
+    if (_cur_floder->block_num > static_cast<unsigned __int16>(1))
     {
-        unsigned __int16 end = _cur_floder->file_size;
-
         // 统计拓展块
-        while (!flag_find && _header.FAT2[index_temp] != 0xffff)
+        while (_header.FAT2[index_temp] != 0xffff)
         {
             index_temp = _header.FAT2[index_temp];
-            end -= static_cast<unsigned __int16>(41);
-
-            if (end > static_cast<unsigned __int16>(41))
-                offset_end = static_cast<unsigned __int8>(41);
-            else
-                offset_end = static_cast<unsigned __int8>(end);
 
             for (offset_p = static_cast<unsigned __int8>(1);
                 offset_p <= offset_end; offset_p++)
             {
                 this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                if (file_temp.last_index == 0xfffff || (file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
-                    && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf))
+                if (file_temp.last_index == 0xffff || (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
+                    && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff))
                     continue;
 
                 if (type_c[0] != file_temp.type[0] || type_c[1] != file_temp.type[1] ||
@@ -864,20 +821,23 @@ void NMFSSpace::Delete(const std::string &del_file_name, const std::string &del_
                 {
                     this->DeleteFile(file_temp.cur_index);
 
+                    unsigned __int16 last_index = file_temp.last_index;
                     file_temp.last_index = 0xffff;
                     file_temp.cur_index = 0xffff;
 
                     this->FileToBlock(&file_temp, index_temp, offset_p);
 
-                    flag_find = true;
-                    break;
+                    this->BlockToFile(&file_temp, last_index, static_cast<unsigned __int8>(0));
+                    file_temp.file_size--;
+                    this->FileToBlock(&file_temp, last_index, static_cast<unsigned __int8>(0));
+
+                    return;
                 }
             }
         }
     }
 
-    if (!flag_find)
-        throw NMFSWarningException("不存在此文件！");
+    throw NMFSWarningException("不存在此文件！");
 }
 
 void NMFSSpace::List(std::list<TreeNode> &tree, const bool &is_root)
@@ -914,23 +874,18 @@ void NMFSSpace::CreateList(std::list<TreeNode> &tree, unsigned __int16 depth, co
     File file_temp;
     unsigned __int16 index_temp = extra_floder.cur_index;
     unsigned __int8 offset_p;
-    unsigned __int8 offset_end = static_cast<unsigned __int8>(1);
-
-    if (extra_floder.file_size < static_cast<unsigned __int8>(42))
-        offset_end = static_cast<unsigned __int8>(extra_floder.file_size);
-    else
-        offset_end = static_cast<unsigned __int8>(41);
+    unsigned __int8 offset_end = static_cast<unsigned __int8>(41);
 
     for (offset_p = static_cast<unsigned __int16>(1);
         offset_p <= offset_end; offset_p++)
     {
         this->BlockToFile(&file_temp, index_temp, offset_p);
 
-        if (file_temp.last_index == 0xfffff)
+        if (file_temp.last_index == 0xffff)
             continue;
 
-        if (file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
-            && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf)
+        if (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
+            && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff)
         {
             this->CreateList(tree, depth, file_temp);
         }
@@ -946,29 +901,21 @@ void NMFSSpace::CreateList(std::list<TreeNode> &tree, unsigned __int16 depth, co
     // 如果有拓展块，再遍历拓展块
     if (extra_floder.block_num > static_cast<unsigned __int16>(1))
     {
-        unsigned __int16 end = extra_floder.file_size;
-
         // 统计拓展块
         while (_header.FAT2[index_temp] != 0xffff)
         {
             index_temp = _header.FAT2[index_temp];
-            end -= static_cast<unsigned __int16>(41);
-
-            if (end > static_cast<unsigned __int16>(41))
-                offset_end = static_cast<unsigned __int8>(41);
-            else
-                offset_end = static_cast<unsigned __int8>(end);
 
             for (offset_p = static_cast<unsigned __int8>(1);
                 offset_p <= offset_end; offset_p++)
             {
                 this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                if (file_temp.last_index == 0xfffff)
+                if (file_temp.last_index == 0xffff)
                     continue;
 
-                if (file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
-                    && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf)
+                if (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
+                    && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff)
                 {
                     this->CreateList(tree, depth, file_temp);
                 }
@@ -998,21 +945,16 @@ void NMFSSpace::MakeDirectory(const std::string &dir_name)
     File file_temp;
     unsigned __int16 index_temp = _cur_floder->cur_index;
     unsigned __int8 offset_p;
-    unsigned __int8 offset_end = static_cast<unsigned __int8>(1);
+    unsigned __int8 offset_end = static_cast<unsigned __int8>(41);
     bool flag_find = false;
-
-    if (_cur_floder->file_size < static_cast<unsigned __int8>(42))
-        offset_end = static_cast<unsigned __int8>(_cur_floder->file_size);
-    else
-        offset_end = static_cast<unsigned __int8>(41);
 
     for (offset_p = static_cast<unsigned __int16>(1);
         offset_p <= offset_end; offset_p++)
     {
         this->BlockToFile(&file_temp, index_temp, offset_p);
 
-        if (file_temp.last_index == 0xfffff || file_temp.type[0] != 0xf || file_temp.type[1] != 0xf
-            || file_temp.type[2] != 0xf || file_temp.type[3] != 0xf)
+        if (file_temp.last_index == 0xffff || file_temp.type[0] != 0xff || file_temp.type[1] != 0xff
+            || file_temp.type[2] != 0xff || file_temp.type[3] != 0xff)
             continue;
 
         bool flag_name = true;
@@ -1036,26 +978,18 @@ void NMFSSpace::MakeDirectory(const std::string &dir_name)
     // 如果有拓展块，再遍历拓展块
     if (!flag_find && _cur_floder->block_num > static_cast<unsigned __int16>(1))
     {
-        unsigned __int16 end = _cur_floder->file_size;
-
         // 统计拓展块
         while (!flag_find && _header.FAT2[index_temp] != 0xffff)
         {
             index_temp = _header.FAT2[index_temp];
-            end -= static_cast<unsigned __int16>(41);
-
-            if (end > static_cast<unsigned __int16>(41))
-                offset_end = static_cast<unsigned __int8>(41);
-            else
-                offset_end = static_cast<unsigned __int8>(end);
 
             for (offset_p = static_cast<unsigned __int8>(1);
                 offset_p <= offset_end; offset_p++)
             {
                 this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                if (file_temp.last_index == 0xfffff || file_temp.type[0] != 0xf || file_temp.type[1] != 0xf
-                    || file_temp.type[2] != 0xf || file_temp.type[3] != 0xf)
+                if (file_temp.last_index == 0xffff || file_temp.type[0] != 0xff || file_temp.type[1] != 0xff
+                    || file_temp.type[2] != 0xff || file_temp.type[3] != 0xff)
                     continue;
 
                 bool flag_name = true;
@@ -1113,6 +1047,8 @@ void NMFSSpace::MakeDirectory(const std::string &dir_name)
     unsigned __int8 cur_offset = 0xff;
     this->GetFreeFile(cur_index, cur_offset);
 
+    File floder_temp;
+
     if (cur_index == 0xffff && cur_offset == 0xff)  // 如果没有空闲，则需要新开辟一块空间
     {
         cur_index = this->GetFreeBlock();
@@ -1132,11 +1068,21 @@ void NMFSSpace::MakeDirectory(const std::string &dir_name)
         _header.FAT2[cur_index] = 0xffff;
 
         _cur_floder->block_num++;
+        this->InitFloderBlock(cur_index);
 
+        index_temp = _cur_floder->cur_index;
+        this->FileToBlock(_cur_floder, index_temp, static_cast<unsigned __int8>(0));
+        if (_cur_floder->last_index != _cur_floder->cur_index)  // 如果当前文件夹不是根文件夹
+            this->FileToBlock(_cur_floder, _cur_floder_block_index, _cur_floder_offset);
     }
     else  // 有空闲，直接写到空闲处
     {
         this->FileToBlock(&new_floder, cur_index, cur_offset);
+
+        index_temp = _cur_floder->cur_index;
+        this->FileToBlock(_cur_floder, index_temp, static_cast<unsigned __int8>(0));
+        if (_cur_floder->last_index != _cur_floder->cur_index)  // 如果当前文件夹不是根文件夹
+            this->FileToBlock(_cur_floder, _cur_floder_block_index, _cur_floder_offset);
     }
 }
 
@@ -1162,21 +1108,16 @@ void NMFSSpace::Open(const std::string &file_name, const std::string &file_type)
     File file_temp;
     unsigned __int16 index_temp = _cur_floder->cur_index;
     unsigned __int8 offset_p;
-    unsigned __int8 offset_end = static_cast<unsigned __int8>(1);
+    unsigned __int8 offset_end = static_cast<unsigned __int8>(41);
     bool flag_find = false;
-
-    if (_cur_floder->file_size < static_cast<unsigned __int8>(42))
-        offset_end = static_cast<unsigned __int8>(_cur_floder->file_size);
-    else
-        offset_end = static_cast<unsigned __int8>(41);
 
     for (offset_p = static_cast<unsigned __int16>(1);
         offset_p <= offset_end; offset_p++)
     {
         this->BlockToFile(&file_temp, index_temp, offset_p);
 
-        if (file_temp.last_index == 0xfffff || (file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
-            && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf))
+        if (file_temp.last_index == 0xffff || (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
+            && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff))
             continue;
 
         if (type_c[0] != file_temp.type[0] || type_c[1] != file_temp.type[1] ||
@@ -1208,26 +1149,18 @@ void NMFSSpace::Open(const std::string &file_name, const std::string &file_type)
     // 如果有拓展块，再遍历拓展块
     if (!flag_find && _cur_floder->block_num > static_cast<unsigned __int16>(1))
     {
-        unsigned __int16 end = _cur_floder->file_size;
-
         // 统计拓展块
         while (!flag_find && _header.FAT2[index_temp] != 0xffff)
         {
             index_temp = _header.FAT2[index_temp];
-            end -= static_cast<unsigned __int16>(41);
-
-            if (end > static_cast<unsigned __int16>(41))
-                offset_end = static_cast<unsigned __int8>(41);
-            else
-                offset_end = static_cast<unsigned __int8>(end);
 
             for (offset_p = static_cast<unsigned __int8>(1);
                 offset_p <= offset_end; offset_p++)
             {
                 this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                if (file_temp.last_index == 0xfffff || (file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
-                    && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf))
+                if (file_temp.last_index == 0xffff || (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
+                    && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff))
                     continue;
 
                 if (type_c[0] != file_temp.type[0] || type_c[1] != file_temp.type[1] ||
@@ -1308,21 +1241,16 @@ void NMFSSpace::RemoveDirectory(const std::string &del_floder_name)
     File file_temp;
     unsigned __int16 index_temp = _cur_floder->cur_index;
     unsigned __int8 offset_p;
-    unsigned __int8 offset_end = static_cast<unsigned __int8>(1);
+    unsigned __int8 offset_end = static_cast<unsigned __int8>(41);
     bool flag_find = false;
 
-    if (_cur_floder->file_size < static_cast<unsigned __int8>(42))
-        offset_end = static_cast<unsigned __int8>(_cur_floder->file_size);
-    else
-        offset_end = static_cast<unsigned __int8>(41);
-
-    for (offset_p = static_cast<unsigned __int16>(1);
+    for (offset_p = static_cast<unsigned __int8>(1);
         offset_p <= offset_end; offset_p++)
     {
         this->BlockToFile(&file_temp, index_temp, offset_p);
 
-        if (file_temp.last_index == 0xfffff || file_temp.type[0] != 0xf || file_temp.type[1] != 0xf
-            || file_temp.type[2] != 0xf || file_temp.type[3] != 0xf)
+        if (file_temp.last_index == 0xffff || file_temp.type[0] != 0xff || file_temp.type[1] != 0xff
+            || file_temp.type[2] != 0xff || file_temp.type[3] != 0xff)
             continue;
 
         bool flag_name = true;
@@ -1353,26 +1281,17 @@ void NMFSSpace::RemoveDirectory(const std::string &del_floder_name)
     // 如果有拓展块，再遍历拓展块
     if (!flag_find && _cur_floder->block_num > static_cast<unsigned __int16>(1))
     {
-        unsigned __int16 end = _cur_floder->file_size;
-
         // 统计拓展块
         while (!flag_find && _header.FAT2[index_temp] != 0xffff)
         {
             index_temp = _header.FAT2[index_temp];
-            end -= static_cast<unsigned __int16>(41);
-
-            if (end > static_cast<unsigned __int16>(41))
-                offset_end = static_cast<unsigned __int8>(41);
-            else
-                offset_end = static_cast<unsigned __int8>(end);
 
             for (offset_p = static_cast<unsigned __int8>(1);
                 offset_p <= offset_end; offset_p++)
             {
                 this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                if (file_temp.last_index == 0xfffff || file_temp.type[0] != 0xf || file_temp.type[1] != 0xf
-                    || file_temp.type[2] != 0xf || file_temp.type[3] != 0xf)
+                if (file_temp.last_index == 0xffff || file_temp.type[0] != 0xff || file_temp.type[1] != 0xff || file_temp.type[2] != 0xff || file_temp.type[3] != 0xff)
                     continue;
 
                 bool flag_name = true;
@@ -1403,26 +1322,23 @@ void NMFSSpace::RemoveDirectory(const std::string &del_floder_name)
     }
 
     if (!flag_find)
-        throw NMFSWarningException("不存在此文件！");
+        throw NMFSWarningException("不存在此文件夹！");
     else
     {
         _cur_floder->file_size--;
-        this->FileToBlock(_cur_floder, _cur_floder->cur_index, static_cast<unsigned __int8>(0));
+        index_temp = _cur_floder->cur_index;
+        this->FileToBlock(_cur_floder, index_temp, static_cast<unsigned __int8>(0));
     }
 }
 
-void NMFSSpace::DelDirectory(File &extra_floder)
+void NMFSSpace::DelDirectory(File &extra_floder)  // 入口为信息表，非处于下一级文件夹块
 {
-    // 先删除子文件，再删除自己
-    // 对于文件夹类型，需要再调用结束后注销掉自己在上一级的信息
-
-    if (extra_floder.last_index == extra_floder.cur_index  // 根文件夹不能被删除，但是其中的子文件夹可以被删除
-        && extra_floder.last_index != 0xffff && extra_floder.cur_index != 0xffff)
+    if (extra_floder.last_index == extra_floder.cur_index)  // 根文件夹不能被删除，但是其中的子文件夹可以被删除
         return;
 
-    if (extra_floder.file_size == static_cast<unsigned __int32>(0))
+    if (extra_floder.file_size == static_cast<unsigned __int32>(0))  // 注销文件夹块
     {
-        this->DeleteFile(extra_floder.cur_index);
+        this->DeleteDirectory(extra_floder);
         return;
     }
 
@@ -1430,68 +1346,80 @@ void NMFSSpace::DelDirectory(File &extra_floder)
     File file_temp;
     unsigned __int16 index_temp = extra_floder.cur_index;
     unsigned __int8 offset_p;
-    unsigned __int8 offset_end = static_cast<unsigned __int8>(1);
+    unsigned __int8 offset_end = static_cast<unsigned __int8>(41);
 
-    if (extra_floder.file_size < static_cast<unsigned __int8>(42))
-        offset_end = static_cast<unsigned __int8>(extra_floder.file_size);
-    else
-        offset_end = static_cast<unsigned __int8>(41);
-
-    for (offset_p = static_cast<unsigned __int16>(1);
+    for (offset_p = static_cast<unsigned __int8>(1);
         offset_p <= offset_end; offset_p++)
     {
         this->BlockToFile(&file_temp, index_temp, offset_p);
 
-        if (file_temp.last_index == 0xfffff)
+        if (file_temp.last_index == 0xffff)
             continue;
 
-        if (file_temp.file_size != static_cast<unsigned __int32>(0)
-            && file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
-            && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf)
+        if (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
+            && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff)
         {
             this->DelDirectory(file_temp);
         }
-
-        this->DeleteFile(file_temp.cur_index);
+        else
+            this->DeleteDirectory(file_temp);
     }
 
     // 如果有拓展块，再遍历拓展块
     if (extra_floder.block_num > static_cast<unsigned __int16>(1))
     {
-        unsigned __int16 end = extra_floder.file_size;
-
         // 统计拓展块
         while (_header.FAT2[index_temp] != 0xffff)
         {
             index_temp = _header.FAT2[index_temp];
-            end -= static_cast<unsigned __int16>(41);
-
-            if (end > static_cast<unsigned __int16>(41))
-                offset_end = static_cast<unsigned __int8>(41);
-            else
-                offset_end = static_cast<unsigned __int8>(end);
 
             for (offset_p = static_cast<unsigned __int8>(1);
                 offset_p <= offset_end; offset_p++)
             {
                 this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                if (file_temp.last_index == 0xfffff)
+                if (file_temp.last_index == 0xffff)
                     continue;
 
-                if (file_temp.file_size != static_cast<unsigned __int32>(0) 
-                    && file_temp.type[0] == 0xf && file_temp.type[1] == 0xf
-                    && file_temp.type[2] == 0xf && file_temp.type[3] == 0xf)
+                if (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
+                    && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff)
                 {
                     this->DelDirectory(file_temp);
                 }
-
-                this->DeleteFile(file_temp.cur_index);
+                else
+                    this->DeleteDirectory(file_temp);
             }
         }
     }
 
-    this->DeleteFile(extra_floder.cur_index);
+    this->DeleteDirectory(extra_floder);
+}
+
+void NMFSSpace::DeleteDirectory(const File &extra_floder)
+{
+    if (extra_floder.cur_index == 0xffff || extra_floder.last_index == 0xffff)
+    {
+        return;
+    }
+    else
+    {
+        unsigned __int16 index_temp = extra_floder.cur_index;
+        unsigned __int16 temp = 0xffff;
+
+        while (index_temp != 0xffff)
+        {
+            for (int i = 0; i < 1024; i++)
+                _space_block[index_temp][i] = 0xff;
+
+            int ii = static_cast<int>(index_temp);
+            unsigned char bit = static_cast<unsigned char>(1 << (ii % 8));
+            _header.FAT1[ii / 8] &= ~bit;
+
+            temp = index_temp;
+            index_temp = _header.FAT2[index_temp];
+            _header.FAT2[temp] = 0xffff;
+        }
+    }
 }
 
 void NMFSSpace::Write(const unsigned char *input, const unsigned __int32 size)
