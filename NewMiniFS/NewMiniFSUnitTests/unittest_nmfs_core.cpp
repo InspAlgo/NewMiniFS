@@ -706,7 +706,7 @@ namespace NewMiniFSUnitTests
                     char cname[9] = { '\0' };
                     memcpy(cname, i.name, 8);
 
-                    blank += "┕   " + std::string(cname);
+                    blank += "   " + std::string(cname);
                     Logger::WriteMessage((char*)blank.data());
                 }
 
@@ -746,10 +746,12 @@ namespace NewMiniFSUnitTests
                 for (auto i : tree)
                 {
                     blank = "";
+
                     for (unsigned __int16 blank_num = static_cast<unsigned __int16>(0);
                         blank_num < i.index; blank_num++)
                     {
-                        blank += " ";
+                        
+                        blank += "  ";
                     }
 
                     bool flag1 = true;
@@ -767,9 +769,12 @@ namespace NewMiniFSUnitTests
                         memcpy(cname, i.name, 8);
                         char ctype[5] = { '\0' };
                         memcpy(ctype, i.type, 4);
+                        std::string stype = std::string(ctype);
+                        stype.length() > 0 ? stype = "." + stype : stype = "";
 
-                        blank += "┕   " + std::string(cname) + std::string(ctype);
+                        blank += " " + std::string(cname) + stype;
                     }
+
                     Logger::WriteMessage((char*)blank.data());
                 }
 
@@ -795,27 +800,261 @@ namespace NewMiniFSUnitTests
     {
     public:
         /* 在根目录打开文件测试 */
+        TEST_METHOD(TM_4_1)
+        {
+            try
+            {
+                NMFSSpace::System("test");
+                NMFSSpace *space = NMFSSpace::GetActiveNMFSSpace();
+
+                space->Open("rf1", "txt");
+
+                NMFSSpace::Exit();
+            }
+            catch (NMFSWarningException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (NMFSErrorException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (...)
+            {
+                Assert::Fail();
+            }
+        }
 
         /* 在根目录关闭文件测试 */
+        TEST_METHOD(TM_4_2)
+        {
+            try
+            {
+                NMFSSpace::System("test");
+                NMFSSpace *space = NMFSSpace::GetActiveNMFSSpace();
+
+                space->Open("rf1", "txt");
+                space->Close();
+
+                NMFSSpace::Exit();
+            }
+            catch (NMFSWarningException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (NMFSErrorException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (...)
+            {
+                Assert::Fail();
+            }
+        }
 
         /* 在一级文件夹下打开文件测试 */
+        TEST_METHOD(TM_4_3)
+        {
+            try
+            {
+                NMFSSpace::System("test");
+                NMFSSpace *space = NMFSSpace::GetActiveNMFSSpace();
+
+                std::queue<std::string>cd_path;
+                cd_path.push("rF1");
+                space->ChangeDirectory(cd_path);
+
+                space->Open("Ff1", "xxxx");
+
+                NMFSSpace::Exit();
+            }
+            catch (NMFSWarningException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (NMFSErrorException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (...)
+            {
+                Assert::Fail();
+            }
+        }
 
         /* 在一级文件夹下关闭文件测试 */
+        TEST_METHOD(TM_4_4)
+        {
+            try
+            {
+                NMFSSpace::System("test");
+                NMFSSpace *space = NMFSSpace::GetActiveNMFSSpace();
 
-        /* 在二级文件夹下打开文件测试 */
+                std::queue<std::string>cd_path;
+                cd_path.push("rF1");
+                space->ChangeDirectory(cd_path);
 
-        /* 在二级文件夹下关闭文件测试 */
+                space->Open("Ff1", "xxxx");
+                space->Close();
+
+                NMFSSpace::Exit();
+            }
+            catch (NMFSWarningException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (NMFSErrorException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (...)
+            {
+                Assert::Fail();
+            }
+        }
 
         /* 在根目录写文件测试 */
+        TEST_METHOD(TM_4_5)
+        {
+            try
+            {
+                NMFSSpace::System("test");
+                NMFSSpace *space = NMFSSpace::GetActiveNMFSSpace();
+
+                space->Open("rf1", "txt");
+
+                std::string in = "abcdefg123456计算机测试";
+                unsigned char *input = new unsigned char[in.length() + 1]{ '\0' };
+                for (int i = 0; i < in.length(); i++)
+                    input[i] = static_cast<unsigned char>(in[i]);
+                unsigned __int32 size = in.length();
+
+                space->Write(input, size);
+
+                NMFSSpace::Exit();
+            }
+            catch (NMFSWarningException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (NMFSErrorException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (...)
+            {
+                Assert::Fail();
+            }
+        }
 
         /* 在根目录读文件测试 */
+        TEST_METHOD(TM_4_6)
+        {
+            try
+            {
+                NMFSSpace::System("test");
+                NMFSSpace *space = NMFSSpace::GetActiveNMFSSpace();
+
+                space->Open("rf1", "txt");
+
+                unsigned char *output = nullptr;
+                space->Read(output);
+
+                Logger::WriteMessage((char*)output);
+
+                delete[] output;
+                output = nullptr;
+
+                NMFSSpace::Exit();
+            }
+            catch (NMFSWarningException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (NMFSErrorException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (...)
+            {
+                Assert::Fail();
+            }
+        }
 
         /* 在一级文件夹下写文件测试 */
+        TEST_METHOD(TM_4_7)
+        {
+            try
+            {
+                NMFSSpace::System("test");
+                NMFSSpace *space = NMFSSpace::GetActiveNMFSSpace();
+
+                std::queue<std::string>cd_path;
+                cd_path.push("rF1");
+                space->ChangeDirectory(cd_path);
+
+                space->Open("Ff1", "xxxx");
+
+                std::string in = "计算机测试\n万里长城\n念天地之悠悠，独怆然而涕下\n65145dcasc";
+                unsigned char *input = new unsigned char[in.length() + 1]{ '\0' };
+                for (int i = 0; i < in.length(); i++)
+                    input[i] = static_cast<unsigned char>(in[i]);
+                unsigned __int32 size = in.length();
+
+                space->Write(input, size);
+
+                NMFSSpace::Exit();
+            }
+            catch (NMFSWarningException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (NMFSErrorException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (...)
+            {
+                Assert::Fail();
+            }
+        }
 
         /* 在一级文件夹下读文件测试 */
+        TEST_METHOD(TM_4_8)
+        {
+            try
+            {
+                NMFSSpace::System("test");
+                NMFSSpace *space = NMFSSpace::GetActiveNMFSSpace();
 
-        /* 在二级文件夹下写文件测试 */
+                std::queue<std::string>cd_path;
+                cd_path.push("rF1");
+                space->ChangeDirectory(cd_path);
 
-        /* 在二级文件夹下读文件测试 */
+                space->Open("Ff1", "xxxx");
+
+                unsigned char *output = nullptr;
+                space->Read(output);
+
+                Logger::WriteMessage((char*)output);
+
+                delete[] output;
+                output = nullptr;
+
+                NMFSSpace::Exit();
+            }
+            catch (NMFSWarningException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (NMFSErrorException &ex)
+            {
+                Logger::WriteMessage((char*)ex.GetExceptMessage().data());
+            }
+            catch (...)
+            {
+                Assert::Fail();
+            }
+        }
     };
 }

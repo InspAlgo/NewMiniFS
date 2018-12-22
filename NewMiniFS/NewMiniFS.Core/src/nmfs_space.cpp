@@ -72,6 +72,11 @@ NMFSSpace::NMFSSpace()
     _cur_file = nullptr;
     _path = nullptr;
 
+    _cur_file_block_index = 0xffff;
+    _cur_file_offset = 0xff;
+
+    _cur_file = new File();  // 实例化，但不做赋值处理
+
     /* 根目录初始化 */
     _cur_floder = new File();
 
@@ -122,6 +127,9 @@ NMFSSpace::NMFSSpace(const std::string &space_name)
     _cur_file = nullptr;
     _path = nullptr;
 
+    _cur_file_block_index = 0xffff;
+    _cur_file_offset = 0xff;
+
     /* 将磁盘中的数据写到内存中 */
     FILE *space_file = fopen((char*)space_name.data(), "rb+");
     _fseeki64(space_file, 0LL, SEEK_SET);
@@ -135,6 +143,8 @@ NMFSSpace::NMFSSpace(const std::string &space_name)
     for (int i = 0, j = 0; i < 512; i++, j += 2)
         _header.FAT2[i] = static_cast<unsigned __int16>((_space_block[1][j] << 8) | _space_block[1][j + 1]);
 
+    _cur_file = new File();
+
     _cur_floder = new File();
     this->BlockToFile(_cur_floder, static_cast<unsigned __int16>(2), static_cast<unsigned __int8>(0));
 
@@ -145,6 +155,27 @@ NMFSSpace::NMFSSpace(const std::string &space_name)
     temp.last_index = 0xffff;
     temp.last_offset = 0xff;
     _path->push_back(temp);
+}
+
+NMFSSpace::~NMFSSpace()
+{
+    delete[] _header.FAT1;
+    _header.FAT1 = nullptr;
+
+    delete[] _header.FAT2;
+    _header.FAT2 = nullptr;
+
+    for (int i = 0; i < 512; i++)
+    {
+        delete[] _space_block[i];
+        _space_block[i] = nullptr;
+    }
+    delete[] _space_block;
+    _space_block = nullptr;
+
+    delete _cur_file;
+    delete _cur_floder;
+    delete _path;
 }
 
 void NMFSSpace::System(const std::string &space_name)
@@ -1111,7 +1142,7 @@ void NMFSSpace::Open(const std::string &file_name, const std::string &file_type)
     unsigned __int8 offset_end = static_cast<unsigned __int8>(41);
     bool flag_find = false;
 
-    for (offset_p = static_cast<unsigned __int16>(1);
+    for (offset_p = static_cast<unsigned __int8>(1);
         offset_p <= offset_end; offset_p++)
     {
         this->BlockToFile(&file_temp, index_temp, offset_p);
@@ -1195,7 +1226,7 @@ void NMFSSpace::Open(const std::string &file_name, const std::string &file_type)
         throw NMFSWarningException("未找到此文件！");
 }
 
-void NMFSSpace::Read(unsigned char *output)
+void NMFSSpace::Read(unsigned char *&output)
 {
     if (_cur_file_block_index == 0xffff && _cur_file_offset == 0xff)
         throw NMFSWarningException("当前并未打开文件！");
@@ -1203,12 +1234,13 @@ void NMFSSpace::Read(unsigned char *output)
     output = nullptr;
 
     if (_cur_file->file_size > static_cast<unsigned __int32>(0))
-        output = new unsigned char[_cur_file->file_size];
+        output = new unsigned char[_cur_file->file_size + 1]{ '\0' };
     else
         return;
 
     unsigned __int16 index_temp = _cur_file->cur_index;
     unsigned __int32 remaining_read_size = _cur_file->file_size;
+    unsigned __int32 r = static_cast<unsigned __int32>(0);
 
     while (index_temp != 0xffff)
     {
@@ -1221,9 +1253,10 @@ void NMFSSpace::Read(unsigned char *output)
 
         for (unsigned __int32 p = static_cast<unsigned __int32>(0);
             p < end; p++)
-            output[p] = _space_block[index_temp][p];
+            output[r++] = _space_block[index_temp][p];
 
         index_temp = _header.FAT2[index_temp];
+        remaining_read_size -= static_cast<unsigned __int32>(1024);
     }
 }
 
@@ -1430,10 +1463,14 @@ void NMFSSpace::Write(const unsigned char *input, const unsigned __int32 size)
         throw NMFSErrorException("空指针！");
 
     this->DeleteFile(_cur_file->cur_index);  // 先删除原有的块
+    _cur_file->cur_index = 0xffff;
+    _cur_file->file_size = static_cast<unsigned __int32>(0);
+    _cur_file->block_num = static_cast<unsigned __int32>(0);
 
     try 
     {
         _cur_file->cur_index = this->WriteFile(input, size);
+        _cur_file->file_size = size;
     }
     catch(NMFSErrorException)
     {
@@ -1448,10 +1485,12 @@ unsigned __int16 NMFSSpace::WriteFile(const unsigned char *input, const unsigned
     unsigned __int32 remaining_size = size;
 
     unsigned __int16 index_temp = this->GetFreeBlock();
+    this->InitFileBlock(index_temp);
 
     if (index_temp == 0xffff)
         throw NMFSErrorException("空间大小不足！");
 
+    _cur_file->block_num++;
     unsigned __int16 extra_index = index_temp;
     unsigned __int16 end;
 
@@ -1469,9 +1508,11 @@ unsigned __int16 NMFSSpace::WriteFile(const unsigned char *input, const unsigned
     while (remaining_size > static_cast<unsigned __int32>(0))
     {
         _header.FAT2[index_temp] = this->GetFreeBlock();
+        this->InitFileBlock(_header.FAT2[index_temp]);
         if (_header.FAT2[index_temp] == 0xffff)
             throw NMFSErrorException("空间大小不足");
 
+        _cur_file->block_num++;
         if (remaining_size > static_cast<unsigned __int32>(1024))
             end = static_cast<unsigned __int16>(1024);
         else
@@ -1486,4 +1527,13 @@ unsigned __int16 NMFSSpace::WriteFile(const unsigned char *input, const unsigned
     }
 
     return extra_index;
+}
+
+void NMFSSpace::InitFileBlock(const unsigned __int16 &block_index)
+{
+    if (block_index == 0xffff)
+        return;
+
+    for (int i = 0; i < 1024; i++)
+        _space_block[block_index][i] = 0x00;
 }

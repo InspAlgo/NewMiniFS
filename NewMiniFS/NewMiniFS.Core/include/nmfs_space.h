@@ -40,6 +40,8 @@ struct TreeNode
 class NMFSSpace
 {
 public:
+    ~NMFSSpace();
+
     static void NewNMFSSpace(const std::string &space_name);  // 建立一个新的简单文件系统
     static NMFSSpace* GetActiveNMFSSpace();  // 获取文件系统，用于命令调用
     static void System(const std::string &space_name);  // 打开一个简单文件系统
@@ -52,7 +54,7 @@ public:
     void List(std::list<TreeNode> &tree, const bool &is_root);  // 显示目录
     void MakeDirectory(const std::string &dir_name);  // 创建子目录
     void Open(const std::string &file_name, const std::string &file_type);  // 打开文件
-    void Read(unsigned char *output);  // 关闭文件
+    void Read(unsigned char *&output);  // 关闭文件
     void RemoveDirectory(const std::string &del_floder_name);  // 删除文件夹
     void Write(const unsigned char *input, const unsigned __int32 size);  // 写文件
 
@@ -72,6 +74,7 @@ private:
     void DeleteDirectory(const File &extra_floder);  // 注销信息
     void CreateList(std::list<TreeNode> &tree, unsigned __int16 depth, const File &extra_floder);
     unsigned __int16 WriteFile(const unsigned char *input, const unsigned __int32 size);
+    void InitFileBlock(const unsigned __int16 &block_index);
 
     std::string _space_name;
     Header _header;
