@@ -1537,3 +1537,31 @@ void NMFSSpace::InitFileBlock(const unsigned __int16 &block_index)
     for (int i = 0; i < 1024; i++)
         _space_block[block_index][i] = 0x00;
 }
+
+std::string NMFSSpace::GetSpaceName() noexcept
+{
+    if (_global_space_pointer == nullptr)
+        return "";
+    else
+        return _global_space_pointer->_space_name;
+}
+
+std::string NMFSSpace::GetCurPath() noexcept
+{
+    if (_global_space_pointer == nullptr)
+        return "";
+
+    char name[9] = { '\0' };
+
+    std::list<CurFloder>::iterator iter = _global_space_pointer->_path->begin();
+    ++iter;
+
+    std::string path = ":~";
+    for (; iter != _global_space_pointer->_path->end(); ++iter)
+    {
+        memcpy(name, (*iter).name, 8);
+        path += "/" + std::string(name);
+    }
+
+    return path;
+}

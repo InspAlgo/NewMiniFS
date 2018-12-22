@@ -46,6 +46,8 @@ public:
     static NMFSSpace* GetActiveNMFSSpace();  // 获取文件系统，用于命令调用
     static void System(const std::string &space_name);  // 打开一个简单文件系统
     static void Exit();  // 退出打开的简单文件系统
+    static std::string GetSpaceName() noexcept;
+    static std::string GetCurPath() noexcept;
 
     void ChangeDirectory(std::queue<std::string> &cd_path);  // 更改当前目录
     void Close();  // 关闭文件
@@ -57,6 +59,7 @@ public:
     void Read(unsigned char *&output);  // 关闭文件
     void RemoveDirectory(const std::string &del_floder_name);  // 删除文件夹
     void Write(const unsigned char *input, const unsigned __int32 size);  // 写文件
+
 
 private:
     NMFSSpace();

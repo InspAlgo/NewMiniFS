@@ -3,6 +3,10 @@
 #include <string>
 #include <vector>
 
+#include "../../NewMiniFS.Core/include/nmfs_space.h"
+#include "../../NewMiniFS.Core/include/exceptions/warning_exception.h"
+#include "../../NewMiniFS.Core/include/exceptions/error_exception.h"
+
 class NMFSCommand
 {
 public:
