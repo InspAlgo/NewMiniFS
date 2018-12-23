@@ -774,10 +774,19 @@ void NMFSSpace::Delete(const std::string &del_file_name, const std::string &del_
 
     char name_c[8] = { '\0' };
     for (int i = 0; i < del_file_name.length(); i++)
+    {
+        if (del_file_name[i] == '/' || del_file_name[i] == '\\')
+            throw NMFSWarningException("文件名称不合法！");
         name_c[i] = del_file_name[i];
+    }
+
     char type_c[4] = { '\0' };
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < del_file_type.length(); i++)
+    {
+        if (del_file_type[i] == '/' || del_file_type[i] == '\\')
+            throw NMFSWarningException("文件类型不合法！");
         type_c[i] = del_file_type[i];
+    }
 
     // 判断当前文件夹下是否有此文件
     // 先遍历本块

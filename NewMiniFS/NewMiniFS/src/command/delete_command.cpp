@@ -16,11 +16,22 @@ bool DeleteCommand::Accept(const std::string &string) const
 
 void DeleteCommand::Action(const std::vector<std::string> &argv) const
 {
-    if (argv.size() != 2)
+    if (argv.size() > 2 || argv.size() < 1)
         throw NMFSWarningException("参数错误！");
 
-    std::string file_name = argv[0];
-    std::string file_type = argv[1];
+    std::string file_name;
+    std::string file_type;
+
+    if (argv.size() == 2)
+    {
+        file_name = argv[0];
+        file_type = argv[1];
+    }
+    if (argv.size() == 1)
+    {
+        file_name = argv[0];
+        file_type = "";
+    }
 
     if (file_name.length() > 8 || file_type.length() > 4)
         throw NMFSWarningException("参数长度错误！");
