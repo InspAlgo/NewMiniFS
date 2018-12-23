@@ -79,13 +79,13 @@ private:
     unsigned __int16 WriteFile(const unsigned char *input, const unsigned __int32 size);
     void InitFileBlock(const unsigned __int16 &block_index);
 
-    std::string _space_name;
-    Header _header;
+    std::string _space_name;  // 空间名称
+    Header _header;  // 空间头
     unsigned char **_space_block;  // 512 个块，每个块 1KB
     File *_cur_floder;  // 当前文件夹
     File *_cur_file;  // 当前文件
-    unsigned __int16 _cur_floder_block_index;
-    unsigned __int8 _cur_floder_offset;
+    unsigned __int16 _cur_floder_block_index;  // 记录当前文件夹的上一级文件夹块索引
+    unsigned __int8 _cur_floder_offset;  // 记录当前文件夹在上一级文件夹块内的偏移量
     unsigned __int16 _cur_file_block_index;  // 记录当前文件的文件夹块索引
     unsigned __int8 _cur_file_offset;  // 记录当前文件的文件夹块内的偏移量
 
