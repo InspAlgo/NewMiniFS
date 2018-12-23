@@ -30,7 +30,7 @@ void OpenCommand::Action(const std::vector<std::string> &argv) const
     if (argv.size() == 1)
     {
         file_name = argv[0];
-        file_type = "    ";
+        file_type = "";
     }
 
     if (file_name.length() > 8 || file_type.length() > 4)

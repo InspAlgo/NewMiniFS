@@ -14,14 +14,11 @@ bool LsCommand::Accept(const std::string &string) const
         return false;
 }
 
-// 蓝色标记文件夹，绿色标记文件
-// 不加参数则显示当前文件夹下说包含的内容
-// 拓展参数 -t 当前目录树；-rt 根目录树
 void LsCommand::Action(const std::vector<std::string> &argv) const
 {
     if (argv.size() > 1)
         throw NMFSWarningException("参数错误！");
-    if (argv.size() > 1 || (argv[0] != "-t" && argv[0] != "-rt"))
+    if (argv.size() > 1 && argv[0] != "-t" && argv[0] != "-rt")
         throw NMFSWarningException("参数错误！");
 
     bool is_root = true;
@@ -52,7 +49,7 @@ void LsCommand::Action(const std::vector<std::string> &argv) const
             }
 
             if (flag1)
-                blank += "test";
+                blank += NMFSSpace::GetSpaceName();
             else
             {
                 char cname[9] = { '\0' };
@@ -60,7 +57,16 @@ void LsCommand::Action(const std::vector<std::string> &argv) const
                 char ctype[5] = { '\0' };
                 memcpy(ctype, i.type, 4);
                 std::string stype = std::string(ctype);
-                stype.length() > 0 ? stype = "." + stype : stype = "";
+
+                stype = "." + stype;
+
+                if (i.type[0] == 0x00 && i.type[1] == 0x00
+                    && i.type[2] == 0x00 && i.type[3] == 0x00)
+                    stype = "";
+
+                if (i.type[0] == 0xff && i.type[1] == 0xff
+                    && i.type[2] == 0xff && i.type[3] == 0xff)
+                    stype = " *";
 
                 blank += " " + std::string(cname) + stype;
             }
@@ -85,5 +91,5 @@ void LsCommand::Action(const std::vector<std::string> &argv) const
 void LsCommand::Help() const
 {
     NMFSConsole::Log("显示文件夹信息\n");
-    NMFSConsole::Log("指令格式: ls [m] ([m]可以省略,否则为 -t(当前目录) 或 -rt(根目录))\n");
+    NMFSConsole::Log("指令格式: ls [m] ([m]可以省略,否则为 -t(当前目录) 或 -rt(根目录),带*的为文件夹)\n");
 }

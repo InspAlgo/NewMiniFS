@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 #include "./include/io/nmfs_console.h"
@@ -6,8 +7,8 @@
 int main()
 {
     NMFSConsole &console = NMFSConsole::Instance();
+
     std::string input;
-    std::string output = "";
     std::vector<std::string> input_v;
     std::vector<std::string> cmd;
 
@@ -20,11 +21,14 @@ int main()
             NMFSConsole::Log(">");
 
             input_v.clear();
-            while (~std::cin.peek() && std::cin.peek() != '\n')
-            {
-                std::cin >> input;
+
+            std::string line;
+            std::getline(std::cin, line);
+            
+            std::istringstream iss(line);
+            
+            while (iss >> input)
                 input_v.push_back(input);
-            }
 
             cmd.clear();
             for (auto i : input_v)

@@ -40,5 +40,5 @@ void SfsCommand::Action(const std::vector<std::string> &argv) const
 void SfsCommand::Help() const
 {
     NMFSConsole::Log("安装空间\n");
-    NMFSConsole::Log("指令格式: sys [space_name]\n");
+    NMFSConsole::Log("指令格式: sfs [space_name]\n");
 }

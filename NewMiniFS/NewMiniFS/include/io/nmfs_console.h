@@ -18,7 +18,7 @@ public:
     static void Log(const unsigned char *&output);
     static void Log(const char *&output);
 
-    static void SplitString(const std::string &s, std::vector<std::string> &v, const std::string &c);
+    static std::vector<std::string> Split(const std::string& in, const std::string& delim);
 
     std::list<NMFSCommand*>*_cmds;
 

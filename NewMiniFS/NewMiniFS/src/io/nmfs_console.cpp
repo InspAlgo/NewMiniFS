@@ -2,6 +2,7 @@
 #include "../../include/io/nmfs_console.h"
 
 #include <iostream>
+#include <sstream>
 
 NMFSConsole & NMFSConsole::Instance()
 {
@@ -67,31 +68,43 @@ NMFSConsole::~NMFSConsole()
 
 void NMFSConsole::Log(const std::string &output)
 {
-    std::cout << output;
+    std::cout << output << std::flush;
+    std::cout.clear();
 }
 
 void NMFSConsole::Log(const unsigned char *&output)
 {
-    std::cout << output;
+    std::cout << output << std::flush;
+    std::cout.clear();
 }
 
 void NMFSConsole::Log(const char *&output)
 {
-    std::cout << output;
+    std::cout << output << std::flush;
+    std::cout.clear();
 }
 
-void NMFSConsole::SplitString(const std::string &s, std::vector<std::string> &v, const std::string &c)
+std::vector<std::string> NMFSConsole::Split(const std::string& in, const std::string& delim)
 {
-    std::string::size_type pos1, pos2;
-    pos2 = s.find(c);
-    pos1 = 0;
-    while (std::string::npos != pos2)
-    {
-        v.push_back(s.substr(pos1, pos2 - pos1));
+    if (delim.length() < 1)
+        return std::vector<std::string>();
 
-        pos1 = pos2 + c.size();
-        pos2 = s.find(c, pos1);
+    char ch = delim[0];
+
+    std::string in_copy(in);
+    for (int i = 0; i < delim.length(); i++)
+    {
+        for (int j = 0; j < in_copy.length(); j++)
+            if (in_copy[j] == delim[i])
+                in_copy[j] = ch;
     }
-    if (pos1 != s.length())
-        v.push_back(s.substr(pos1));
+
+    std::vector<std::string> command_vector;
+    std::istringstream iss(in_copy);
+    std::string temp;
+
+    while (std::getline(iss, temp, ch))
+        command_vector.emplace_back(std::move(temp));
+
+    return command_vector;
 }

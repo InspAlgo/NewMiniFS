@@ -19,12 +19,15 @@ void CdCommand::Action(const std::vector<std::string> &argv) const
     if (argv.size() != 1)
         throw NMFSWarningException("参数错误！");
 
-    std::vector<std::string>temp_v;
-    NMFSConsole::SplitString(argv[0], temp_v, "/");
+    std::vector<std::string>temp_v = NMFSConsole::Split(argv[0], "\\/");
 
     std::queue<std::string>cd_path;
     for (auto i : temp_v)
-        cd_path.push(i);
+        if (i.length() > 0)
+            cd_path.push(i);
+
+    if (cd_path.size() < 1)
+        throw NMFSWarningException("参数错误！");
 
     try
     {

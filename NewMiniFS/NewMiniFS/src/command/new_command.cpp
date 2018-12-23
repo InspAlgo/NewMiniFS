@@ -23,7 +23,7 @@ void NewCommand::Action(const std::vector<std::string> &argv) const
     {
         NMFSSpace::NewNMFSSpace(argv[0]);
         NMFSSpace::Exit();
-        NMFSConsole::Log("\' " + argv[0] + " \' 创建成功!\n");
+        NMFSConsole::Log("\'" + argv[0] + "\' 创建成功!\n");
     }
     catch (NMFSWarningException)
     {

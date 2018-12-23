@@ -26,7 +26,10 @@ void ReadCommand::Action(const std::vector<std::string> &argv) const
         unsigned char *output = nullptr;
         space->Read(output);
 
-        NMFSConsole::Log((char*)output);
+        if (output != nullptr)
+            NMFSConsole::Log((char*)output);
+        else
+            NMFSConsole::Log("\n");
 
         delete[] output;
         output = nullptr;

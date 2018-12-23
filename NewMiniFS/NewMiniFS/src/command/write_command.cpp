@@ -31,10 +31,13 @@ void WriteCommand::Action(const std::vector<std::string> &argv) const
         while (std::getline(std::cin, temp))
             in += temp + "\n";
 
+        std::cin.clear();
+        std::cin.ignore();
+
         unsigned char *input = new unsigned char[in.length() + 1]{ '\0' };
         for (int i = 0; i < in.length(); i++)
             input[i] = static_cast<unsigned char>(in[i]);
-        unsigned __int32 size = in.length();
+        unsigned __int32 size = static_cast<unsigned __int32>(in.length());
 
         space->Write(input, size);
     }

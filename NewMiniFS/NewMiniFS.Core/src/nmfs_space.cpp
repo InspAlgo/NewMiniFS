@@ -85,11 +85,8 @@ NMFSSpace::NMFSSpace()
 
     _cur_floder->last_index = _cur_floder->cur_index = static_cast<unsigned __int16>(2);
 
-    for (int i = 0; i < 32; i++)  // 全部置 1，说明为文件夹类型
-    {
-        unsigned char bit = static_cast<unsigned char>(1 << (i % 8));
-        _cur_floder->type[i / 8] |= bit;
-    }
+    for (int i = 0; i < 4; i++)  // 全部置 1，说明为文件夹类型
+        _cur_floder->type[i] = 0xff;
 
     _cur_floder->file_size = static_cast<unsigned __int32>(0);
     _cur_floder->block_num = static_cast<unsigned __int32>(1);
@@ -621,10 +618,19 @@ void NMFSSpace::Create(const std::string &file_name, const std::string &file_typ
 
     char name_c[8] = { '\0' };
     for (int i = 0; i < file_name.length(); i++)
+    {
+        if (file_name[i] == '/' || file_name[i] == '\\')
+            throw NMFSWarningException("文件名称不合法！");
         name_c[i] = file_name[i];
+    }
+        
     char type_c[4] = { '\0' };
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < file_type.length(); i++)
+    {
+        if (file_type[i] == '/' || file_type[i] == '\\')
+            throw NMFSWarningException("文件类型不合法！");
         type_c[i] = file_type[i];
+    }
 
     // 判断当前文件夹下是否有同名文件
     // 先遍历本块
@@ -674,8 +680,9 @@ void NMFSSpace::Create(const std::string &file_name, const std::string &file_typ
             {
                 this->BlockToFile(&file_temp, index_temp, offset_p);
 
-                if (file_temp.last_index == 0xffff || (file_temp.type[0] == 0xff && file_temp.type[1] == 0xff
-                    && file_temp.type[2] == 0xff && file_temp.type[3] == 0xff))
+                if (file_temp.last_index == 0xffff || (file_temp.type[0] == 0xff 
+                    && file_temp.type[1] == 0xff && file_temp.type[2] == 0xff 
+                    && file_temp.type[3] == 0xff))
                     continue;
 
                 bool flag_name = true;
@@ -744,12 +751,17 @@ void NMFSSpace::Create(const std::string &file_name, const std::string &file_typ
         index_temp = _cur_floder->cur_index;
         this->FileToBlock(_cur_floder, index_temp, static_cast<unsigned __int8>(0));
         this->InitFloderBlock(cur_index);
+        if (_cur_floder->last_index != _cur_floder->cur_index)  // 更新在一级文件夹信息块中的信息
+            this->FileToBlock(_cur_floder, _cur_floder_block_index, _cur_floder_offset);
     }
     else  // 有空闲，直接写到空闲处
     {
         this->FileToBlock(&new_floder, cur_index, cur_offset);
+
         index_temp = _cur_floder->cur_index;
         this->FileToBlock(_cur_floder, index_temp, static_cast<unsigned __int8>(0));
+        if (_cur_floder->last_index != _cur_floder->cur_index)  // 更新在一级文件夹信息块中的信息
+            this->FileToBlock(_cur_floder, _cur_floder_block_index, _cur_floder_offset);
     }
 }
 
@@ -969,7 +981,12 @@ void NMFSSpace::MakeDirectory(const std::string &dir_name)
 
     char name_c[8] = { '\0' };
     for (int i = 0; i < dir_name.length(); i++)
+    {
+        if (dir_name[i] == '/' || dir_name[i] == '\\')
+            throw NMFSWarningException("文件夹名称不合法！");
         name_c[i] = dir_name[i];
+    }
+
 
     // 判断当前文件夹下是否有同名文件夹
     // 先遍历本块
@@ -1058,11 +1075,8 @@ void NMFSSpace::MakeDirectory(const std::string &dir_name)
     new_floder.last_index = _cur_floder->cur_index;
     new_floder.cur_index = new_index;
 
-    for (int i = 0; i < 32; i++)  // 全部置 1，说明为文件夹类型
-    {
-        unsigned char bit = static_cast<unsigned char>(1 << (i % 8));
-        new_floder.type[i / 8] |= bit;
-    }
+    for (int i = 0; i < 4; i++)  // 全部置 1，说明为文件夹类型
+        new_floder.type[i] = 0xff;
 
     new_floder.file_size = static_cast<unsigned __int32>(0);
     new_floder.block_num = static_cast<unsigned __int32>(1);
@@ -1077,8 +1091,6 @@ void NMFSSpace::MakeDirectory(const std::string &dir_name)
     unsigned __int16 cur_index = _cur_floder->cur_index;
     unsigned __int8 cur_offset = 0xff;
     this->GetFreeFile(cur_index, cur_offset);
-
-    File floder_temp;
 
     if (cur_index == 0xffff && cur_offset == 0xff)  // 如果没有空闲，则需要新开辟一块空间
     {
@@ -1129,10 +1141,19 @@ void NMFSSpace::Open(const std::string &file_name, const std::string &file_type)
 
     char name_c[8] = { '\0' };
     for (int i = 0; i < file_name.length(); i++)
+    {
+        if (file_name[i] == '/' || file_name[i] == '\\')
+            throw NMFSWarningException("文件名称不合法！");
         name_c[i] = file_name[i];
+    }
+
     char type_c[4] = { '\0' };
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < file_type.length(); i++)
+    {
+        if (file_type[i] == '/' || file_type[i] == '\\')
+            throw NMFSWarningException("文件类型不合法！");
         type_c[i] = file_type[i];
+    }
 
     // 判断当前文件夹下是否有同名文件
     // 先遍历本块
